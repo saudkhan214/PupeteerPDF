@@ -1,0 +1,31 @@
+DB Credentials:
+DATABASE=mongodb+srv://username:<PASSWORD>@cluster0.ema6b.mongodb.net/Authentication?retryWrites=true&w=majority
+DATABASE_PASSWORD=zAbiQkllv30d4qD5
+
+
+Refrence URLS for Pupeteer:
+
+For PDF creation:
+https://medium.com/@fmoessle/use-html-and-puppeteer-to-create-pdfs-in-node-js-566dbaf9d9ca
+
+If login required:
+https://dev.to/sonyarianto/puppeteer-quick-tip-how-to-do-basic-authentication-2pe7
+
+Video Refrence:
+https://www.youtube.com/watch?v=lgyszZhAZOI
+
+
+Token Management Application:
+URL: https://parsedomain-saudkhan.herokuapp.com/token
+User:khan@gmail.com
+Pass:123456 
+
+
+Request Body:
+{
+"website":"{target website}",
+"webhook":"{webhook url}",
+"auth_required":{boolen},
+"user_name":"{user_name or email}",
+"password":"password"
+}
