@@ -14,7 +14,8 @@ app.post('/create', authenticateToken, (req, res) => {
                 var filePath = path.resolve("./uploads");
                 var fileName = `${req.body.path}_${Date.now().toString()}.pdf`
                 const browser = await puppeteer.launch({
-                    headless: true
+                    headless: true,
+                    args: ['--no-sandbox','--disable-setuid-sandbox']
                 })
                 const page = await browser.newPage();
                 if (req.body.auth_required) {
