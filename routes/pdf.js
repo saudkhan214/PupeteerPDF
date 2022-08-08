@@ -18,7 +18,6 @@ app.post('/create', authenticateToken, (req, res) => {
                 })
                 const page = await browser.newPage();
                 if (req.body.auth_required) {
-                    console.log("auth")
                     // set the HTTP Basic Authentication credential
                     await page.authenticate({ 'username': req.body.user_name, 'password': req.body.password });
                 }
