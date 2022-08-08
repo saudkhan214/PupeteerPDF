@@ -48,7 +48,7 @@ app.post('/create', authenticateToken, (req, res) => {
             else {
                 return res.status(500).json({
                     success: false,
-                    msg: "Internal Server Error"
+                    msg: "Internal Server Error" 
                 });
             }
         })
