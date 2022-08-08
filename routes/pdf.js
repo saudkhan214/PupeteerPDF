@@ -22,14 +22,19 @@ app.post('/create', authenticateToken, (req, res) => {
                     // set the HTTP Basic Authentication credential
                     await page.authenticate({ 'username': req.body.user_name, 'password': req.body.password });
                 }
-                await page.goto(req.body.website);
+                //await page.setViewport({width:1440,height:900,deviceScaleFactor:2})
+                await page.goto(req.body.website,{ waitUntil: "networkidle2" });
+                await page.emulateMediaType('screen')
                 await page.pdf(
                     {
                         path: filePath + `/${fileName}`,
                         format: req.body.format ? req.body.format : 'A4',
-                        displayHeaderFooter: req.body.displayHeaderFooter ? true : false,
+                        displayHeaderFooter: req.body.displayHeaderFooter,
                         headerTemplate: req.body.headerTemplate ? req.body.headerTemplate : "",
                         footerTemplate: req.body.footerTemplate ? req.body.footerTemplate : "",
+                        printBackground:true,
+                        landscape:true,
+                        scale: 0.5
                     })
                 await browser.close();
                 console.log("file written successfullly")

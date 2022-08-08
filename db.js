@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 var dbURI = process.env.DATABASE.replace('<PASSWORD>',process.env.DATABASE_PASSWORD);
-mongoose.connect(dbURI, { useNewUrlParser: true });
+mongoose.connect(dbURI, { useNewUrlParser: true ,useUnifiedTopology: true});
 
 // CONNECTION EVENTS
 mongoose.connection.on('connected', function () {
