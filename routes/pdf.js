@@ -4,7 +4,10 @@ const { authenticateToken } = require('./auth')
 const path = require('path');
 const axios = require('axios');
 const puppeteer = require('puppeteer');
+const uuid = require('uuid');
+const fs = require('fs');
 const Token = require('../models/TokenAuthentication')
+const FileStructure = require('../models/FileStructure')
 
 app.post('/create', authenticateToken, (req, res) => {
     try {
@@ -12,7 +15,7 @@ app.post('/create', authenticateToken, (req, res) => {
             if (response) {
                 console.log("request.headers.host", req.headers.host)
                 var filePath = path.resolve("./uploads");
-                var fileName = `${req.body.path}_${Date.now().toString()}.pdf`
+                var fileName = `puppeteer_${Date.now().toString()}.pdf`
                 const browser = await puppeteer.launch({
                     headless: true,
                     args: ['--no-sandbox','--disable-setuid-sandbox']
@@ -23,7 +26,7 @@ app.post('/create', authenticateToken, (req, res) => {
                     await page.authenticate({ 'username': req.body.user_name, 'password': req.body.password });
                 }
                 //await page.setViewport({width:1440,height:900,deviceScaleFactor:2})
-                await page.goto(req.body.website,{ waitUntil: "networkidle2" });
+                await page.goto(req.body.website,{ waitUntil: "networkidle2", timeout: 0 });
                 await page.emulateMediaType('screen')
                 await page.pdf(
                     {
@@ -32,8 +35,8 @@ app.post('/create', authenticateToken, (req, res) => {
                         displayHeaderFooter: req.body.displayHeaderFooter,
                         headerTemplate: req.body.headerTemplate ? req.body.headerTemplate : "",
                         footerTemplate: req.body.footerTemplate ? req.body.footerTemplate : "",
-                        printBackground:true,
-                        landscape:true,
+                        printBackground: true,
+                        landscape: req.body.landscape,
                         scale: 0.5
                     })
                 await browser.close();
@@ -43,7 +46,14 @@ app.post('/create', authenticateToken, (req, res) => {
                     const textResponse = await axios.get(url);
                     console.log("textResponse", textResponse)
                 }
-                res.status(200).send({ success: true, msg: 'PDF created successfully', downloadLink: req.headers.host + `/pdf/download/${fileName}` })
+                let obj = {
+                    fileName: req.body.path,
+                    uniqueFileName: fileName,
+                    uniqueId: uuid.v1()
+                }
+                var myData = new FileStructure(obj);
+                await myData.save()
+                res.status(200).send({ success: true, msg: 'PDF created successfully', downloadLink: req.headers.host + `/pdf/download/${obj.uniqueId}` })
             }
             else {
                 return res.status(500).json({
@@ -61,18 +71,24 @@ app.post('/create', authenticateToken, (req, res) => {
 })
 
 //download pdf
-app.get('/download/:filename', (req, res) => {
+app.get('/download/:uniqueId', async (req, res) => {
     try {
-        let filename = req.params.filename;
-        var filePath = path.resolve("./uploads");
-        console.log("filePath", filePath + `/${filename}`)
-        res.download(filePath + `/${filename}`, function (error) {
-            if (error) {
-                console.log("error", error)
+        let uniqueId = req.params.uniqueId;
+        FileStructure.findOne({ uniqueId: uniqueId }).then(doc => {
+            if (!doc) {
+                return res.status(404).send({ success: false, msg: "file not found" })
             } else {
-                console.log("Pdf Download Successfully")
+                var filePath = path.resolve("./uploads");
+                console.log("filePath", filePath + `/${doc.uniqueFileName}`)
+                res.download(filePath + `/${doc.uniqueFileName}`, `${doc.fileName}`, function (error) {
+                    if (error) {
+                        console.log("error", error)
+                    } else {
+                        console.log("Pdf Download Successfully")
+                    }
+                });
             }
-        });
+        })
     } catch (e) {
         return res.status(500).json({
             success: false,
@@ -81,6 +97,28 @@ app.get('/download/:filename', (req, res) => {
     }
 })
 
+app.delete('/delete/:uniqueId', async (req, res) => {
+    try {
+        let uniqueId = req.params.uniqueId;
+        FileStructure.findOne({ uniqueId: uniqueId }).then(doc => {
+            if (!doc) {
+                return res.status(404).send({ success: false, msg: "file not found" })
+            } else {
+                var filePath = path.resolve("./uploads");
+                console.log("filePath", filePath + `/${doc.uniqueFileName}`)
+                FileStructure.deleteOne({ uniqueId: uniqueId }).then(element => {
+                    fs.unlinkSync(filePath + `/${doc.uniqueFileName}`)
+                })
+                res.status(200).send({ success: true, msg: 'PDF deleted successfully' })
+            }
+        })
+    } catch (e) {
+        return res.status(500).json({
+            success: false,
+            msg: e.message
+        });
+    }
+})
 function UpdateRemainingLimit(token, next) {
     Token.findOne({ token: token }, (err, doc) => {
         doc.remainingRequests = Number(doc.remainingRequests - 1)
