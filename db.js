@@ -14,3 +14,4 @@ mongoose.connection.on('disconnected', function () {
 });
 
 require('./models/TokenAuthentication');
+require('./models/FileStructure');
