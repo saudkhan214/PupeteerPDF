@@ -53,7 +53,7 @@ app.post('/create', authenticateToken, (req, res) => {
                 }
                 var myData = new FileStructure(obj);
                 await myData.save()
-                res.status(200).send({ success: true, msg: 'PDF created successfully', downloadLink: req.headers.host + `/pdf/download/${obj.uniqueId}` })
+                res.status(200).send({ success: true, msg: 'PDF created successfully', downloadLink: req.headers.host + `/pdf/download/${obj.uniqueId}`,uniqueFileId:obj.uniqueId })
             }
             else {
                 return res.status(500).json({
