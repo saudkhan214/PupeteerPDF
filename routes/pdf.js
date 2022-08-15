@@ -18,27 +18,36 @@ app.post('/create', authenticateToken, (req, res) => {
                 var fileName = `puppeteer_${Date.now().toString()}.pdf`
                 const browser = await puppeteer.launch({
                     headless: true,
-                    args: ['--no-sandbox','--disable-setuid-sandbox']
+                    args: ['--no-sandbox', '--disable-setuid-sandbox']
                 })
                 const page = await browser.newPage();
 
-                if(req.body.view_port){
+                // Get the "viewport" of the page, as reported by the page.
+                const dimensions = await page.evaluate(() => {
+                    return {
+                        width: document.documentElement.clientWidth,
+                        height: document.documentElement.clientHeight,
+                        deviceScaleFactor: window.devicePixelRatio,
+                    };
+                });
+
+                if (req.body.view_port) {
                     await page.setViewport({
-                        height:req.body.view_port.height>0 ? req.body.view_port.height : 800,
-                        width:req.body.view_port.width>0 ? req.body.view_port.width : 1200,
-                        isMobile:req.body.view_port.isMobile==true ? req.body.view_port.isMobile:false,
-                        hasTouch:req.body.view_port.hasTouch==true ? req.body.view_port.hasTouch:false,
-                        deviceScaleFactor:req.body.view_port.deviceScaleFactor>0?req.body.view_port.deviceScaleFactor:1,
-                        isLandscape:req.body.view_port.isLandscape==true ? req.body.view_port.isLandscape : false
+                        height: req.body.view_port.height > 0 ? req.body.view_port.height : dimensions.height,
+                        width: req.body.view_port.width > 0 ? req.body.view_port.width : dimensions.width,
+                        isMobile: req.body.view_port.isMobile == true ? req.body.view_port.isMobile : false,
+                        hasTouch: req.body.view_port.hasTouch == true ? req.body.view_port.hasTouch : false,
+                        deviceScaleFactor: req.body.view_port.deviceScaleFactor > 0 ? req.body.view_port.deviceScaleFactor : 1,
+                        isLandscape: req.body.view_port.isLandscape == true ? req.body.view_port.isLandscape : false
                     })
                 }
-                
+
                 if (req.body.auth_required) {
                     // set the HTTP Basic Authentication credential
                     await page.authenticate({ 'username': req.body.user_name, 'password': req.body.password });
                 }
                 //await page.setViewport({width:1440,height:900,deviceScaleFactor:2})
-                await page.goto(req.body.website,{ waitUntil: "networkidle2", timeout: 0 });
+                await page.goto(req.body.website, { waitUntil: "networkidle2", timeout: 0 });
                 await page.emulateMediaType('screen')
                 await page.pdf(
                     {
@@ -49,8 +58,7 @@ app.post('/create', authenticateToken, (req, res) => {
                         footerTemplate: req.body.footerTemplate ? req.body.footerTemplate : "",
                         printBackground: true,
                         landscape: req.body.landscape,
-                        scale: 0.5
-                        
+                        scale: 1,
                     })
                 await browser.close();
                 console.log("file written successfullly")
@@ -66,12 +74,12 @@ app.post('/create', authenticateToken, (req, res) => {
                 }
                 var myData = new FileStructure(obj);
                 await myData.save()
-                res.status(200).send({ success: true, msg: 'PDF created successfully', downloadLink: req.headers.host + `/pdf/download/${obj.uniqueId}`,uniqueFileId:obj.uniqueId })
+                res.status(200).send({ success: true, msg: 'PDF created successfully', downloadLink: req.headers.host + `/pdf/download/${obj.uniqueId}`, uniqueFileId: obj.uniqueId })
             }
             else {
                 return res.status(500).json({
                     success: false,
-                    msg: "Internal Server Error" 
+                    msg: "Internal Server Error"
                 });
             }
         })
