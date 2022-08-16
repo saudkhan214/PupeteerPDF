@@ -36,10 +36,7 @@ app.post('/create', authenticateToken, (req, res) => {
                             deviceScaleFactor: window.devicePixelRatio,
                         };
                     });
-                    // await page.setViewport({
-                    //     height: req.body.view_port.height,
-                    //     width: req.body.view_port.width
-                    // })
+                    
                     if (req.body.view_port) {
                         await page.setViewport({
                             height: req.body.view_port.height > 0 ? req.body.view_port.height : dimensions.height,
@@ -68,8 +65,8 @@ app.post('/create', authenticateToken, (req, res) => {
                             printBackground: true,
                             landscape: req.body.landscape,
                             scale: parseFloat(req.body.scale) <= 1.5 ? parseFloat(req.body.scale) : 0.5, //accepts range 0.1 to 1.5
-                            height: req.body.view_port.height > 0 ? req.body.view_port.height : dimensions.height,
-                            width: req.body.view_port.width > 0 ? req.body.view_port.width : dimensions.width,
+                            height: req.body.view_port.height > 0 ? req.body.view_port.height+'px' : dimensions.height+'px',
+                            width: req.body.view_port.width > 0 ? req.body.view_port.width+'px' : dimensions.width+'px',
                         })
                     await browser.close();
                     console.log("file written successfullly")
