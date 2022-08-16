@@ -13,68 +13,84 @@ app.post('/create', authenticateToken, (req, res) => {
     try {
         UpdateRemainingLimit(req.token, async function (response) {
             if (response) {
-                console.log("request.headers.host", req.headers.host)
-                var filePath = path.resolve("./uploads");
-                var fileName = `puppeteer_${Date.now().toString()}.pdf`
-                const browser = await puppeteer.launch({
-                    headless: true,
-                    args: ['--no-sandbox', '--disable-setuid-sandbox']
-                })
-                const page = await browser.newPage();
-
-                // Get the "viewport" of the page, as reported by the page.
-                const dimensions = await page.evaluate(() => {
-                    return {
-                        width: document.documentElement.clientWidth,
-                        height: document.documentElement.clientHeight,
-                        deviceScaleFactor: window.devicePixelRatio,
-                    };
-                });
-
-                if (req.body.view_port) {
-                    await page.setViewport({
-                        height: req.body.view_port.height > 0 ? req.body.view_port.height : dimensions.height,
-                        width: req.body.view_port.width > 0 ? req.body.view_port.width : dimensions.width,
-                        isMobile: req.body.view_port.isMobile == true ? req.body.view_port.isMobile : false,
-                        hasTouch: req.body.view_port.hasTouch == true ? req.body.view_port.hasTouch : false,
-                        deviceScaleFactor: req.body.view_port.deviceScaleFactor > 0 ? req.body.view_port.deviceScaleFactor : 1,
-                        isLandscape: req.body.view_port.isLandscape == true ? req.body.view_port.isLandscape : false
+                try {
+                    console.log("request.headers.host", req.headers.host)
+                    var filePath = path.resolve("./uploads");
+                    var fileName = `puppeteer_${Date.now().toString()}.pdf`
+                    const browser = await puppeteer.launch({
+                        headless: true,
+                        args: [
+                            '--no-sandbox', '--disable-setuid-sandbox',
+                            '--start-maximized'
+                            // `--window-size=${req.body.view_port.width},${req.body.view_port.height}`
+                        ],
+                        defaultViewport: null
                     })
+                    const page = await browser.newPage();
+
+                    // Get the "viewport" of the page, as reported by the page.
+                    const dimensions = await page.evaluate(() => {
+                        return {
+                            width: document.documentElement.clientWidth,
+                            height: document.documentElement.clientHeight,
+                            deviceScaleFactor: window.devicePixelRatio,
+                        };
+                    });
+                    // await page.setViewport({
+                    //     height: req.body.view_port.height,
+                    //     width: req.body.view_port.width
+                    // })
+                    if (req.body.view_port) {
+                        await page.setViewport({
+                            height: req.body.view_port.height > 0 ? req.body.view_port.height : dimensions.height,
+                            width: req.body.view_port.width > 0 ? req.body.view_port.width : dimensions.width,
+                            isMobile: req.body.view_port.isMobile == true ? req.body.view_port.isMobile : false,
+                            hasTouch: req.body.view_port.hasTouch == true ? req.body.view_port.hasTouch : false,
+                            deviceScaleFactor: req.body.view_port.deviceScaleFactor > 0 ? req.body.view_port.deviceScaleFactor : 1,
+                            isLandscape: req.body.view_port.isLandscape == true ? req.body.view_port.isLandscape : false
+                        })
+                    }
+
+                    if (req.body.auth_required) {
+                        // set the HTTP Basic Authentication credential
+                        await page.authenticate({ 'username': req.body.user_name, 'password': req.body.password });
+                    }
+                    //await page.setViewport({width:1440,height:900,deviceScaleFactor:2})
+                    await page.goto(req.body.website, { waitUntil: "networkidle2", timeout: 0 });
+                    await page.emulateMediaType('screen')
+                    await page.pdf(
+                        {
+                            path: filePath + `/${fileName}`,
+                            format: req.body.format ? req.body.format : 'A4',
+                            displayHeaderFooter: req.body.displayHeaderFooter,
+                            headerTemplate: req.body.headerTemplate ? req.body.headerTemplate : "",
+                            footerTemplate: req.body.footerTemplate ? req.body.footerTemplate : "",
+                            printBackground: true,
+                            landscape: req.body.landscape,
+                            scale: parseFloat(req.body.scale) <= 1.5 ? parseFloat(req.body.scale) : 0.5, //accepts range 0.1 to 1.5
+                            height: req.body.view_port.height > 0 ? req.body.view_port.height : dimensions.height,
+                            width: req.body.view_port.width > 0 ? req.body.view_port.width : dimensions.width,
+                        })
+                    await browser.close();
+                    console.log("file written successfullly")
+                    if (req.body.webhook && req.body.webhook !== "") {
+                        const url = `${req.body.webhook}?downloadLink=${req.headers.host + `/pdf/download/${fileName}`}`;
+                        const textResponse = await axios.get(url);
+                        console.log("textResponse", textResponse)
+                    }
+                    let obj = {
+                        fileName: req.body.path,
+                        uniqueFileName: fileName,
+                        uniqueId: uuid.v1()
+                    }
+                    var myData = new FileStructure(obj);
+                    await myData.save()
+                    res.status(200).send({ success: true, msg: 'PDF created successfully', downloadLink: req.headers.host + `/pdf/download/${obj.uniqueId}`, uniqueFileId: obj.uniqueId })
+                }
+                catch (err) {
+                    throw err
                 }
 
-                if (req.body.auth_required) {
-                    // set the HTTP Basic Authentication credential
-                    await page.authenticate({ 'username': req.body.user_name, 'password': req.body.password });
-                }
-                //await page.setViewport({width:1440,height:900,deviceScaleFactor:2})
-                await page.goto(req.body.website, { waitUntil: "networkidle2", timeout: 0 });
-                await page.emulateMediaType('screen')
-                await page.pdf(
-                    {
-                        path: filePath + `/${fileName}`,
-                        format: req.body.format ? req.body.format : 'A4',
-                        displayHeaderFooter: req.body.displayHeaderFooter,
-                        headerTemplate: req.body.headerTemplate ? req.body.headerTemplate : "",
-                        footerTemplate: req.body.footerTemplate ? req.body.footerTemplate : "",
-                        printBackground: true,
-                        landscape: req.body.landscape,
-                        scale: 1,
-                    })
-                await browser.close();
-                console.log("file written successfullly")
-                if (req.body.webhook && req.body.webhook !== "") {
-                    const url = `${req.body.webhook}?downloadLink=${req.headers.host + `/pdf/download/${fileName}`}`;
-                    const textResponse = await axios.get(url);
-                    console.log("textResponse", textResponse)
-                }
-                let obj = {
-                    fileName: req.body.path,
-                    uniqueFileName: fileName,
-                    uniqueId: uuid.v1()
-                }
-                var myData = new FileStructure(obj);
-                await myData.save()
-                res.status(200).send({ success: true, msg: 'PDF created successfully', downloadLink: req.headers.host + `/pdf/download/${obj.uniqueId}`, uniqueFileId: obj.uniqueId })
             }
             else {
                 return res.status(500).json({
